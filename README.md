@@ -1,7 +1,7 @@
 Panduan ini dirancang supaya loe nggak bingung dan langsung bisa buat di GIT-MANGAEMENT.
 ________________________________________
 📌 PANDUAN KERJA KELOMPOK (STEP-BY-STEP)
-"Halo proyek React + Tailwind sudah aku setup di GitHub. Tolong ikuti langkah ini berurutan biar nilai kita aman dan kodingan nggak tabrakan:"
+"ikuti langkah ini berurutan biar kodingan nggak tabrakan:"
 Step 1: Gabung ke Project (Wajib)
 1.	Cek notifikasi email kalian atau buka link ini: https://github.com/notifications
 2.	Klik "Accept Invitation" untuk masuk ke repo: stanlevv/GIT-MANGAEMENT.
