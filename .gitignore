@@ -1,0 +1,81 @@
+# ============================================
+# PROJECT EDUFIN — ROOT .gitignore
+# ============================================
+
+# ---- SECRETS & ENVIRONMENT ----
+.env
+.env.*
+!.env.example
+*.env
+
+# ---- BACKEND (Laravel) ----
+backend/vendor/
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/storage/framework/cache/
+backend/storage/framework/sessions/
+backend/storage/framework/testing/
+backend/storage/framework/views/
+backend/storage/logs/
+backend/bootstrap/cache/
+backend/.phpunit.cache/
+backend/.phpunit.result.cache
+
+# ---- FRONTEND (Next.js / Vite / React) ----
+frontend/node_modules/
+frontend/.next/
+frontend/dist/
+frontend/.env.local
+frontend/.env.*.local
+frontend/out/
+
+# ---- NODE (root level) ----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-store/
+
+# ---- BUILD ARTIFACTS ----
+dist.zip
+*.zip
+*.tar.gz
+build/
+dist/
+.output/
+.vercel/
+.netlify/
+
+# ---- EDITOR / IDE ----
+.vscode/
+.idea/
+*.suo
+*.user
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---- OS FILES ----
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ---- LOGS ----
+*.log
+logs/
+
+# ---- TEMP / MISC ----
+.temp/
+.tmp/
+*.tmp
+*.bak
+*.orig
+
+# ---- AI / AGENTS (optional: keep or remove as needed) ----
+# .agents/
+# .cursor/
