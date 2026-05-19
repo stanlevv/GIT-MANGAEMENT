@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { X, Upload, Info, CheckCircle } from "lucide-react";
-import { apiFetch } from "../../../config/api";
+import { apiFetch } from "../../config/api";
 
 interface CampaignSubmissionFormProps {
   isOpen: boolean;

@@ -2,13 +2,16 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Actions\Auth\LoginAction;
+use App\Actions\Auth\RegisterAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\Auth\RegisterRequest;
+use App\Http\Resources\UserResource;
 use App\Models\Student;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -35,87 +38,41 @@ class AuthController extends Controller
                 'name'       => $student->name,
                 'school'     => $student->school_name,
                 'class'      => $student->class_name,
-                'parentName' => $student->parent ? $student->parent->name : '-',
+                'parentName' => $student->parent_name,
                 'address'    => $student->address,
             ]
         ]);
     }
 
     /**
-     * Register akun baru (Siswa/Orang Tua atau Donatur).
+     * Register akun baru — delegated to RegisterAction.
      */
-    public function register(Request $request)
+    public function register(RegisterRequest $request, RegisterAction $action)
     {
-        $request->validate([
-            'name'     => 'required|string',
-            'email'    => 'required|email|unique:users,email',
-            'password' => 'required|min:6',
-            'role'     => 'required|in:parent,donor',
-            'nisn'     => 'required_if:role,parent|string|size:10',
-        ]);
+        $result = $action->execute($request->validated());
 
-        $student = null;
-
-        // Parent hanya boleh register dengan NISN yang valid dan belum diklaim parent lain.
-        if ($request->role === 'parent') {
-            $student = Student::where('nisn', $request->nisn)->first();
-
-            if (!$student) {
-                return response()->json(['message' => 'NISN tidak valid.'], 422);
-            }
-
-            if ($student->parent_id !== null) {
-                return response()->json([
-                    'message' => 'NISN ini sudah terhubung ke akun lain. Hubungi admin sekolah jika ada kendala.'
-                ], 409);
-            }
-        }
-
-        $user = User::create([
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-            'role'     => $request->role,
-        ]);
-
-        if ($student) {
-            $student->update(['parent_id' => $user->id]);
-        }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'user'    => $user,
-            'token'   => $token,
-        ], 201);
+        return (new UserResource($result['user']))
+            ->additional(['success' => true, 'token' => $result['token']])
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
-     * Login pengguna.
+     * Login pengguna — delegated to LoginAction.
      */
-    public function login(Request $request)
+    public function login(LoginRequest $request, LoginAction $action)
     {
-        $request->validate([
-            'email'    => 'required|email',
-            'password' => 'required',
-        ]);
+        $result = $action->execute($request->email, $request->password);
 
-        if (!Auth::attempt($request->only('email', 'password'))) {
+        if (!$result) {
             return response()->json([
                 'success' => false,
                 'message' => 'Email atau password salah.',
             ], 401);
         }
 
-        $user  = Auth::user();
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'user'    => $user,
-            'token'   => $token,
-        ]);
+        return (new UserResource($result['user']))
+            ->additional(['success' => true, 'token' => $result['token']]);
     }
 
     /**
@@ -132,8 +89,7 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
-        $user = $request->user()->load('students');
-        return response()->json(['user' => $user]);
+        return new UserResource($request->user()->load('students'));
     }
 
     /**
@@ -142,22 +98,22 @@ class AuthController extends Controller
     public function googleAuth(Request $request)
     {
         $request->validate([
-            'access_token' => 'required|string',
+            'credential' => 'required|string',
         ]);
 
-        // Ambil info user dari Google menggunakan access_token
-        $response = \Illuminate\Support\Facades\Http::withToken($request->access_token)
-            ->get('https://www.googleapis.com/oauth2/v3/userinfo');
+        // Verifikasi ID Token via Google API
+        $response = \Illuminate\Support\Facades\Http::get('https://oauth2.googleapis.com/tokeninfo', [
+            'id_token' => $request->credential
+        ]);
 
         if (!$response->successful()) {
-            return response()->json(['success' => false, 'message' => 'Token Google tidak valid.'], 401);
+            return response()->json(['success' => false, 'message' => 'Token Google (ID Token) tidak valid.'], 401);
         }
 
         $googleUser = $response->json();
 
         // Pastikan email diverifikasi oleh Google
-        // Google API v3 mengembalikan email_verified sebagai boolean, bukan string "true"
-        if (empty($googleUser['email_verified'])) {
+        if (empty($googleUser['email_verified']) || $googleUser['email_verified'] !== "true" && $googleUser['email_verified'] !== true) {
             return response()->json(['success' => false, 'message' => 'Email Google belum diverifikasi.'], 401);
         }
 
@@ -166,7 +122,8 @@ class AuthController extends Controller
 
         if ($user) {
             // Jika user ada tapi bukan donor
-            if ($user->role !== 'donor' && $user->role !== 'donatur') {
+            $roleValue = $user->role instanceof \App\Enums\UserRole ? $user->role->value : $user->role;
+            if ($roleValue !== 'donor' && $roleValue !== 'donatur') {
                 return response()->json(['success' => false, 'message' => 'Akun Google ini terdaftar sebagai role lain.'], 403);
             }
             // Update avatar jika ada
@@ -186,10 +143,7 @@ class AuthController extends Controller
 
         $token = $user->createToken('auth_token')->plainTextToken;
 
-        return response()->json([
-            'success' => true,
-            'user' => $user,
-            'token' => $token
-        ]);
+        return (new UserResource($user))
+            ->additional(['success' => true, 'token' => $token]);
     }
 }

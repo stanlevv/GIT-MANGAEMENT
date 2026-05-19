@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { X, Send, Upload, CheckCircle } from "lucide-react";
-import { apiFetch } from "../../../config/api";
+import { apiFetch } from "../../config/api";
 
 interface ITSupportFormProps {
   isOpen: boolean;

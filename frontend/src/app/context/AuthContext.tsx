@@ -1,6 +1,6 @@
 // src/app/context/AuthContext.tsx
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { apiFetch } from "../../config/api";
+import { apiFetch } from "../config/api";
 
 export type UserRole = "siswa" | "sekolah" | "donatur" | "parent" | "donor" | "admin_sekolah";
 
@@ -45,6 +45,7 @@ function laravelFetch(path: string, body: object): Promise<Response> {
 /** Normalisasi role dari Laravel ke role internal frontend */
 function normalizeRole(rawRole: string): UserRole {
   const map: Record<string, UserRole> = {
+    student:       "siswa",
     parent:        "siswa",
     donor:         "donatur",
     admin_sekolah: "sekolah",
@@ -79,7 +80,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         clearTimeout(timeoutId);
         if (!res.ok) throw new Error("Token invalid");
         const data = await res.json();
-        const u = data.user;
+        // Support both UserResource format (data.data) and legacy format (data.user)
+        const u = data.data ?? data.user;
+        const s = u.students?.[0] || {};
         const normalized: User = {
           id:       String(u.id),
           name:     u.name,
@@ -87,6 +90,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role:     normalizeRole(u.role),
           avatar:   u.avatar,
           verified: true,
+          nisn:       s.nisn,
+          school:     s.school_name,
+          class:      s.class_name,
+          parentName: s.parent_name,
         };
         setUser(normalized);
         localStorage.setItem(SESSION_KEY, JSON.stringify(normalized));
@@ -145,13 +152,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (res.ok && data.success) {
         if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
+        // Support both UserResource format (data.data) and legacy format (data.user)
+        const u = data.data ?? data.user;
+        const s = u.students?.[0] || {};
         const normalized: User = {
-          id:       String(data.user.id),
-          name:     data.user.name,
-          email:    data.user.email,
-          role:     normalizeRole(data.user.role),
-          avatar:   data.user.avatar,
+          id:       String(u.id),
+          name:     u.name,
+          email:    u.email,
+          role:     normalizeRole(u.role),
+          avatar:   u.avatar,
           verified: true,
+          nisn:       s.nisn,
+          school:     s.school_name,
+          class:      s.class_name,
+          parentName: s.parent_name,
         };
         setUser(normalized);
         localStorage.setItem(SESSION_KEY, JSON.stringify(normalized));
@@ -169,17 +183,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     accessToken: string
   ): Promise<{ success: boolean; message: string; role?: UserRole }> => {
     try {
-      const res  = await laravelFetch("/auth/google", { access_token: accessToken });
+      const res  = await laravelFetch("/auth/google", { credential: accessToken });
       const data = await res.json();
 
       if (res.ok && data.success) {
         if (data.token) localStorage.setItem(TOKEN_KEY, data.token);
+        const u = data.data ?? data.user;
         const normalized: User = {
-          id:       String(data.user.id),
-          name:     data.user.name,
-          email:    data.user.email,
-          role:     normalizeRole(data.user.role),
-          avatar:   data.user.avatar,
+          id:       String(u.id),
+          name:     u.name,
+          email:    u.email,
+          role:     normalizeRole(u.role),
+          avatar:   u.avatar,
           verified: true,
         };
         setUser(normalized);

@@ -1,6 +1,6 @@
 // src/app/hooks/useApi.ts
 import { useState, useEffect, useCallback } from "react";
-import { apiFetch } from "../../config/api";
+import { apiFetch } from "../config/api";
 
 interface UseApiState<T> {
   data: T | null;

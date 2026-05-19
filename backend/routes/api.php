@@ -7,6 +7,9 @@ use App\Http\Controllers\API\PaymentController;
 use App\Http\Controllers\API\CampaignController;
 use App\Http\Controllers\API\HelpdeskController;
 use App\Http\Controllers\API\SchoolController;
+use App\Http\Controllers\API\AidRequestController;
+use App\Http\Controllers\API\NotificationController;
+use App\Http\Controllers\API\ProjectExpenseController;
 
 
 // ──────────────────────────────────────────────────────────
@@ -40,37 +43,50 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/auth/logout', [AuthController::class, 'logout']);
     Route::get('/auth/me',      [AuthController::class, 'me']);
 
-    // ── Siswa & Orang Tua (role: parent) ──────────────────
-    Route::get('/student/bills',       [StudentController::class, 'bills']);
-    Route::get('/student/my-students', [StudentController::class, 'myStudents']);
-    Route::post('/student/add',        [StudentController::class, 'addStudent']);
+    // ── Siswa & Orang Tua (role: parent, student) ──────────
+    Route::middleware('role:parent,student')->group(function () {
+        Route::get('/student/bills',       [StudentController::class, 'bills']);
+        Route::get('/student/my-students', [StudentController::class, 'myStudents']);
+        Route::post('/student/add',        [StudentController::class, 'addStudent']);
+        Route::post('/student/update-profile', [StudentController::class, 'updateProfile']);
 
-    // Pengajuan Bantuan
-    Route::post('/aid-requests', [App\Http\Controllers\API\AidRequestController::class, 'store']);
+        // Pengajuan Bantuan
+        Route::get('/aid-requests/me', [AidRequestController::class, 'myRequests']);
+        Route::post('/aid-requests',   [AidRequestController::class, 'store']);
+    });
 
-    // Pembayaran
+    // Pembayaran (bisa diakses parent, student, dan donor)
+    Route::get('/payment/channels',  [PaymentController::class, 'getChannels']);
     Route::post('/payment/create',   [PaymentController::class, 'create']);
     Route::get('/payment/history',   [PaymentController::class, 'history']);
 
+    // Notifikasi (semua role yang login)
+    Route::get('/notifications',             [NotificationController::class, 'index']);
+    Route::post('/notifications/read-all',   [NotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/notifications/{notification}',    [NotificationController::class, 'destroy']);
+
     // ── Sekolah (role: admin_sekolah) ─────────────────────
-    Route::prefix('school')->group(function () {
+    Route::middleware('role:admin_sekolah')->prefix('school')->group(function () {
         Route::get('/dashboard', [SchoolController::class, 'dashboard']);
         Route::get('/students',  [SchoolController::class, 'students']);
         Route::get('/bills',     [SchoolController::class, 'bills']);
         Route::get('/payments',  [SchoolController::class, 'payments']);
-        
+
         // Manajemen Pengajuan Bantuan
-        Route::get('/aid-requests',                           [App\Http\Controllers\API\AidRequestController::class, 'index']);
-        Route::post('/aid-requests/{aidRequest}/approve',     [App\Http\Controllers\API\AidRequestController::class, 'approve']);
-        Route::post('/aid-requests/{aidRequest}/reject',      [App\Http\Controllers\API\AidRequestController::class, 'reject']);
+        Route::get('/aid-requests',                           [AidRequestController::class, 'index']);
+        Route::post('/aid-requests/{aidRequest}/approve',     [AidRequestController::class, 'approve']);
+        Route::post('/aid-requests/{aidRequest}/reject',      [AidRequestController::class, 'reject']);
 
         // Manajemen Pengeluaran Proyek
-        Route::get('/project-expenses',      [App\Http\Controllers\API\ProjectExpenseController::class, 'index']);
-        Route::post('/project-expenses',     [App\Http\Controllers\API\ProjectExpenseController::class, 'store']);
+        Route::get('/project-expenses',      [ProjectExpenseController::class, 'index']);
+        Route::post('/project-expenses',     [ProjectExpenseController::class, 'store']);
     });
 
     // ── Admin: Buat & Kelola Kampanye ────────────────────────
-    Route::post('/campaigns',                   [CampaignController::class, 'store']);
-    Route::put('/campaigns/{campaign}',         [CampaignController::class, 'update']);
-    Route::delete('/campaigns/{campaign}',      [CampaignController::class, 'destroy']);
+    Route::middleware('role:admin_sekolah')->group(function () {
+        Route::post('/campaigns',                   [CampaignController::class, 'store']);
+        Route::put('/campaigns/{campaign}',         [CampaignController::class, 'update']);
+        Route::delete('/campaigns/{campaign}',      [CampaignController::class, 'destroy']);
+    });
 });

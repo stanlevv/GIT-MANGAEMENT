@@ -7,21 +7,61 @@
 
 ```
 project-edufin/
-├── PRD.md                  ← FILE INI (baca pertama kali)
-├── AI_HANDOFF.md           ← Catatan pekerjaan AI terakhir
-├── frontend/               ← React + TypeScript + Vite
-│   └── src/app/
-│       ├── components/     ← UI per role (student, school, donor, auth)
-│       ├── services/       ← API calls ke backend
-│       ├── context/        ← Auth context, global state
-│       └── routes.tsx      ← Semua route aplikasi
-└── backend/                ← Laravel (PHP) + Sanctum
+├── PRD.md                    ← FILE INI (baca pertama kali)
+├── AI_HANDOFF.md             ← Catatan pekerjaan AI terakhir
+│
+├── frontend/                 ← React 19 + TypeScript + Vite
+│   └── src/
+│       ├── main.tsx          ← Entry point aplikasi
+│       ├── styles/           ← CSS global (index, theme, fonts, tailwind)
+│       ├── assets/           ← Gambar & aset statis
+│       └── app/
+│           ├── App.tsx       ← Root component (AuthProvider + RouterProvider)
+│           ├── routes.tsx    ← Definisi semua route
+│           ├── store.ts      ← Redux store
+│           │
+│           ├── config/       ← Konfigurasi global
+│           │   ├── api.ts    ← API_BASE URL, apiFetch, Google Client ID
+│           │   └── school.ts ← Konstanta data sekolah
+│           │
+│           ├── pages/        ← Komponen level halaman (1:1 dengan route)
+│           │   ├── auth/     ← OnboardingPage, LoginPage, RegisterPage
+│           │   ├── student/  ← StudentDashboard, PaySPP, LoanPage, dll
+│           │   ├── school/   ← SchoolDashboard, SchoolBillsPage, dll
+│           │   └── donor/    ← DonorDashboard, CampaignDetail, dll
+│           │
+│           ├── components/   ← Komponen reusable (bukan halaman)
+│           │   ├── ui/       ← Primitive shadcn/ui (button, card, dialog, dll)
+│           │   ├── shared/   ← Layout & widget bersama (AppLayout, BottomNav, dll)
+│           │   └── modals/   ← Form & modal per domain
+│           │       ├── student/
+│           │       ├── school/
+│           │       └── donor/
+│           │
+│           ├── context/      ← React Context (AuthContext)
+│           ├── hooks/        ← Custom hooks (useAuth, useApi)
+│           ├── lib/          ← Utility murni (format.ts, authToken.ts, campaigns.ts)
+│           └── services/     ← Integrasi API eksternal (aiApi.ts)
+│
+└── backend/                  ← Laravel (PHP) + Sanctum
     ├── app/
     │   ├── Http/Controllers/API/  ← AuthController, StudentController, dll
-    │   └── Models/                ← User, Student, Bill, Payment, dll
-    ├── database/migrations/       ← Schema database
+    │   ├── Http/Resources/        ← API Resource transformers
+    │   ├── Http/Requests/         ← Form Request validators
+    │   ├── Models/                ← User, Student, Bill, Payment, Campaign, dll
+    │   └── Services/              ← TripayService, dll
+    ├── database/
+    │   ├── migrations/            ← Schema database
+    │   └── seeders/               ← Data awal
     └── routes/api.php             ← Definisi endpoint API
 ```
+
+> **Aturan penamaan:**
+> - `pages/` → komponen yang di-render langsung oleh router (satu file = satu route)
+> - `components/shared/` → layout atau widget yang dipakai lintas role
+> - `components/modals/` → form atau dialog yang di-trigger dari page, dikelompokkan per role
+> - `components/ui/` → primitive shadcn, **jangan dimodifikasi manual**
+> - `app/config/api.ts` → satu-satunya sumber `API_BASE`, `apiFetch`, dan `GOOGLE_CLIENT_ID`
 
 # PRODUCT REQUIREMENTS DOCUMENT (PRD)
 EDUFIN – Platform Keuangan Pendidikan Digital untuk satu Sekolah

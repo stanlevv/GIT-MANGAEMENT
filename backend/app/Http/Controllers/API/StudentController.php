@@ -3,7 +3,13 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\BillResource;
+use App\Http\Resources\CampaignResource;
+use App\Http\Resources\NotificationResource;
+use App\Http\Resources\StudentResource;
 use App\Models\Bill;
+use App\Models\Campaign;
+use App\Models\Notification;
 use App\Models\Student;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -17,7 +23,7 @@ class StudentController extends Controller
     public function bills(Request $request)
     {
         $user     = $request->user();
-        $students = Student::where('parent_id', $user->id)->get();
+        $students = Student::where('user_id', $user->id)->get();
 
         if ($students->isEmpty()) {
             return response()->json(['bills' => [], 'students' => []]);
@@ -55,9 +61,21 @@ class StudentController extends Controller
                      ->orderBy('created_at', 'desc')
                      ->get();
 
+        $notifications = Notification::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+
+        $campaigns = Campaign::where('status', 'active')
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
         return response()->json([
-            'bills'    => $bills,
-            'students' => $students,
+            'bills'         => BillResource::collection($bills),
+            'students'      => StudentResource::collection($students),
+            'notifications' => NotificationResource::collection($notifications),
+            'campaigns'     => CampaignResource::collection($campaigns),
         ]);
     }
 
@@ -66,10 +84,8 @@ class StudentController extends Controller
      */
     public function myStudents(Request $request)
     {
-        $user     = $request->user();
-        $students = Student::where('parent_id', $user->id)->get();
-
-        return response()->json(['students' => $students]);
+        $students = Student::where('user_id', $request->user()->id)->get();
+        return StudentResource::collection($students);
     }
 
     /**
@@ -84,12 +100,45 @@ class StudentController extends Controller
         $student = Student::where('nisn', $request->nisn)->first();
 
         // Kaitkan student ke user yang login
-        $student->parent_id = $request->user()->id;
+        $student->user_id = $request->user()->id;
         $student->save();
 
         return response()->json([
             'success' => true,
-            'student' => $student
+            'student' => new StudentResource($student),
+        ]);
+    }
+
+    /**
+     * Update profil siswa (Alamat dan Nomor HP).
+     */
+    public function updateProfile(Request $request)
+    {
+        $request->validate([
+            'phone_number' => 'nullable|string',
+            'address'      => 'nullable|string',
+        ]);
+
+        $user = $request->user();
+
+        // Update phone number di tabel users
+        if ($request->has('phone_number')) {
+            $user->phone_number = $request->phone_number;
+            $user->save();
+        }
+
+        // Update address di tabel students (asumsi 1 user = 1 student untuk skenario ini, ambil yang pertama)
+        if ($request->has('address')) {
+            $student = Student::where('user_id', $user->id)->first();
+            if ($student) {
+                $student->address = $request->address;
+                $student->save();
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profil berhasil diperbarui'
         ]);
     }
 }

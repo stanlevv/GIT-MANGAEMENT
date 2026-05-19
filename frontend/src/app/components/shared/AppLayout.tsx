@@ -2,11 +2,13 @@ import React from "react";
 import { Outlet, useLocation, Navigate } from "react-router";
 import { useAuth } from "../../context/AuthContext";
 import { BottomNav } from "./BottomNav";
+import { GraduationCap } from "lucide-react";
 
 const PUBLIC_PATHS = ["/", "/login", "/register"];
 
 const ROLE_DEST: Record<string, string> = {
   siswa:   "/student",
+  student: "/student",
   sekolah: "/school",
   donatur: "/donor",
   donor:   "/donor",
@@ -29,9 +31,9 @@ export function AppLayout() {
       <div className="min-h-screen flex items-center justify-center"
         style={{ background: "linear-gradient(135deg,#EEF4FF 0%,#E6F7FF 100%)" }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl flex items-center justify-center"
-            style={{ background: "linear-gradient(135deg,#1677FF,#108EE9)", boxShadow: "0 8px 24px rgba(22,119,255,0.35)", fontSize: "1.6rem" }}>
-            🎓
+          <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-white"
+            style={{ background: "linear-gradient(135deg,#1677FF,#108EE9)", boxShadow: "0 8px 24px rgba(22,119,255,0.35)" }}>
+            <GraduationCap size={32} strokeWidth={2.5} />
           </div>
           <div className="w-8 h-8 rounded-full border-4 border-t-transparent animate-spin"
             style={{ borderColor: "#C5D8FF", borderTopColor: "#1677FF" }} />
@@ -51,7 +53,7 @@ export function AppLayout() {
     if (PUBLIC_PATHS.slice(1).includes(path)) {
       return <Navigate to={getRoleDest(user.role)} replace />;
     }
-    if (path.startsWith("/student") && !["siswa", "parent"].includes(user.role)) {
+    if (path.startsWith("/student") && !["siswa", "parent", "student"].includes(user.role)) {
       return <Navigate to={getRoleDest(user.role)} replace />;
     }
     if (path.startsWith("/school") && user.role !== "sekolah") {

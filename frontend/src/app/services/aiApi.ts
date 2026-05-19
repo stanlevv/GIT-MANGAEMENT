@@ -1,5 +1,5 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { API_BASE } from "../../config/api";
+import { API_BASE } from "../config/api";
 import { authToken } from "../lib/authToken";
 
 type AskAIRequest = {

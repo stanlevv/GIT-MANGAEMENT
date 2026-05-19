@@ -14,8 +14,9 @@ class Bill extends Model
     ];
 
     protected $casts = [
-        'items' => 'array',
-        'due_date' => 'date'
+        'items'        => 'array',
+        'due_date'     => 'date',
+        'total_amount' => 'float',
     ];
 
     public function student()

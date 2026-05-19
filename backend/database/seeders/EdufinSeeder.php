@@ -23,37 +23,27 @@ class EdufinSeeder extends Seeder
     {
         $total = array_sum(array_column($this->defaultItems, 'amount')); // 850000
 
+        // Clear existing dynamic data to ensure clean state
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        \App\Models\Bill::truncate();
+        \App\Models\Student::truncate();
+        \App\Models\Notification::truncate();
+        \App\Models\Campaign::truncate();
+        // Clear students and parents but keep admin
+        User::where('role', '!=', 'admin_sekolah')->delete();
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+
         // ── 1. Admin Sekolah ──────────────────────────────────────────────────
-        User::create([
-            'name'     => 'Admin SDN 3 Malang',
-            'email'    => 'admin@edufin.sch.id',
-            'password' => Hash::make('admin123'),
-            'role'     => 'admin_sekolah',
-        ]);
+        User::updateOrCreate(
+            ['email'    => 'admin@edufin.sch.id'],
+            [
+                'name'     => 'Admin SMA 3 Malang',
+                'password' => Hash::make('admin123'),
+                'role'     => 'admin_sekolah',
+            ]
+        );
 
-        // ── 2. Orang Tua / Wali ──────────────────────────────────────────────
-        $parent1 = User::create([
-            'name'     => 'Hendra Santoso',
-            'email'    => 'hendra@gmail.com',
-            'password' => Hash::make('password123'),
-            'role'     => 'parent',
-        ]);
-
-        $parent2 = User::create([
-            'name'     => 'Dewi Rahayu',
-            'email'    => 'dewi@gmail.com',
-            'password' => Hash::make('password123'),
-            'role'     => 'parent',
-        ]);
-
-        $parent3 = User::create([
-            'name'     => 'Slamet Riyadi',
-            'email'    => 'slamet@gmail.com',
-            'password' => Hash::make('password123'),
-            'role'     => 'parent',
-        ]);
-
-        // ── 3. Donatur ────────────────────────────────────────────────────────
+        // ── 2. Donatur ────────────────────────────────────────────────────────
         User::create([
             'name'     => 'Rina Permata',
             'email'    => 'rina@gmail.com',
@@ -61,63 +51,98 @@ class EdufinSeeder extends Seeder
             'role'     => 'donor',
         ]);
 
-        User::create([
-            'name'     => 'Bapak Dermawan',
-            'email'    => 'dermawan@gmail.com',
-            'password' => Hash::make('password123'),
-            'role'     => 'donor',
-        ]);
+        // ── 3. Data Siswa (SMA 3 Kota Malang) ─────────────────────────────────
+        $classes = ['X', 'XI', 'XII'];
+        $studentsCreated = [];
 
-        // ── 4. Data Siswa ─────────────────────────────────────────────────────
-        $student1 = Student::create([
-            'parent_id'   => $parent1->id,
-            'name'        => 'Budi Santoso',
-            'nisn'        => '0012345678',
-            'school_name' => 'SDN 3 Malang',
-            'class_name'  => 'X IPA 1',
-            'address'     => 'Jl. Veteran No.12, Malang',
-        ]);
+        foreach ($classes as $classIdx => $className) {
+            // Group 1: 5 Siswa dengan 1 Ortu yang sama
+            $parentName1 = "Bp. Sutrisno (" . $className . ")";
+            $address1    = "Jl. Ijen No. " . (10 + $classIdx) . ", Malang";
+            $phone1      = "081233445566";
 
-        $student2 = Student::create([
-            'parent_id'   => $parent2->id,
-            'name'        => 'Citra Dewi Rahayu',
-            'nisn'        => '0087654321',
-            'school_name' => 'SMPN 5 Batu',
-            'class_name'  => 'VIII B',
-            'address'     => 'Jl. Diponegoro No.45, Batu',
-        ]);
+            for ($i = 1; $i <= 5; $i++) {
+                $studentName = "Siswa " . $className . " - " . $i;
+                $nisn        = "10" . ($classIdx + 1) . "00000" . $i;
+                $email       = "siswa" . strtolower($className) . $i . "@student.sch.id";
 
-        $student3 = Student::create([
-            'parent_id'   => $parent3->id,
-            'name'        => 'Ahmad Rizki Pratama',
-            'nisn'        => '0099887766',
-            'school_name' => 'SMA Negeri 2 Kepanjen',
-            'class_name'  => 'XII IPA 2',
-            'address'     => 'Jl. Pahlawan No.7, Kepanjen',
-        ]);
+                $user = User::create([
+                    'name'         => $studentName,
+                    'email'        => $email,
+                    'password'     => Hash::make('password123'),
+                    'role'         => 'student',
+                    'phone_number' => '08' . rand(100000000, 999999999)
+                ]);
 
-        $student4 = Student::create([
-            'parent_id'   => $parent1->id,
-            'name'        => 'Sari Santoso',
-            'nisn'        => '0011223344',
-            'school_name' => 'SDN 3 Malang',
-            'class_name'  => 'VII A',
-            'address'     => 'Jl. Veteran No.12, Malang',
-        ]);
+                $studentsCreated[] = Student::create([
+                    'user_id'     => $user->id,
+                    'nisn'        => $nisn,
+                    'name'        => $studentName,
+                    'parent_name' => $parentName1,
+                    'school_name' => 'SMA 3 Kota Malang',
+                    'class_name'  => $className,
+                    'address'     => $address1,
+                    'registration_data' => [
+                        'initial_address' => $address1,
+                        'initial_phone'   => $user->phone_number,
+                        'registration_date' => Carbon::now()->toDateTimeString(),
+                    ]
+                ]);
+            }
 
-        // ── 5. Tagihan 6 Bulan Terakhir ───────────────────────────────────────
-        // Buat tagihan 6 bulan terakhir untuk setiap siswa
+            // Group 2: 2 Siswa dengan 1 Ortu yang sama (Siblings)
+            $parentName2 = "Bp. Hendra Santoso";
+            $address2    = "Jl. Veteran No. 99, Malang";
+            
+            for ($i = 1; $i <= 2; $i++) {
+                $studentName = "Anak Hendra " . $className . " " . $i;
+                $nisn        = "20" . ($classIdx + 1) . "00000" . $i;
+                $email       = "anak" . strtolower($className) . $i . "@student.sch.id";
+
+                // Test Case Budi (Siswa)
+                if ($className === 'X' && $i === 1) {
+                    $studentName = "Budi Santoso";
+                    $email = "budi@student.sch.id";
+                    $nisn = "2000000001";
+                }
+
+                $user = User::create([
+                    'name'         => $studentName,
+                    'email'        => $email,
+                    'password'     => Hash::make('password123'),
+                    'role'         => 'student',
+                    'phone_number' => '08' . rand(100000000, 999999999)
+                ]);
+
+                $studentsCreated[] = Student::create([
+                    'user_id'     => $user->id,
+                    'nisn'        => $nisn,
+                    'name'        => $studentName,
+                    'parent_name' => $parentName2,
+                    'school_name' => 'SMA 3 Kota Malang',
+                    'class_name'  => $className,
+                    'address'     => $address2,
+                    'registration_data' => [
+                        'initial_address' => $address2,
+                        'initial_phone'   => $user->phone_number,
+                        'registration_date' => Carbon::now()->toDateTimeString(),
+                    ]
+                ]);
+            }
+        }
+
+        // ── 4. Tagihan & Notifikasi ───────────────────────────────────────────
         $months = [];
-        for ($i = 5; $i >= 0; $i--) {
+        for ($i = 3; $i >= 0; $i--) {
             $date     = Carbon::now()->subMonths($i)->startOfMonth();
             $months[] = [
-                'label'    => $date->translatedFormat('F Y'), // "November 2025"
+                'label'    => $date->translatedFormat('F Y'),
                 'due_date' => $date->copy()->endOfMonth()->toDateString(),
-                'is_past'  => $i > 0, // bulan lalu = lunas, bulan ini = tertunggak
+                'is_past'  => $i > 0, 
             ];
         }
 
-        foreach ([$student1, $student2, $student3, $student4] as $student) {
+        foreach ($studentsCreated as $student) {
             foreach ($months as $month) {
                 Bill::create([
                     'student_id'   => $student->id,
@@ -128,57 +153,36 @@ class EdufinSeeder extends Seeder
                     'items'        => $this->defaultItems,
                 ]);
             }
+
+            // Tambah notifikasi default
+            \App\Models\Notification::create([
+                'user_id' => $student->user_id,
+                'type'    => 'pembayaran_spp',
+                'title'   => 'Tagihan Baru Terbit',
+                'body'    => 'Tagihan SPP bulan ' . Carbon::now()->translatedFormat('F Y') . ' sudah tersedia.',
+                'created_at' => Carbon::now(),
+            ]);
         }
 
-        // ── 6. Kampanye Donasi ────────────────────────────────────────────────
+        // ── 5. Kampanye Donasi ────────────────────────────────────────────────
         Campaign::create([
-            'title'          => 'Beasiswa Siswa Kurang Mampu 2026',
-            'description'    => 'Bantu siswa berprestasi yang kesulitan membayar SPP agar tetap bisa bersekolah. Setiap donasi Anda memberi harapan kepada generasi penerus bangsa.',
+            'title'          => 'Beasiswa Prestasi SMA 3 Malang',
+            'description'    => 'Bantu teman-teman kita yang berprestasi namun terkendala biaya.',
             'target_amount'  => 50000000,
-            'current_amount' => 18500000,
-            'image_url'      => 'https://images.unsplash.com/photo-1509062522246-3755977927d7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+            'current_amount' => 15000000,
+            'image_url'      => 'https://images.unsplash.com/photo-1523050335392-938511794244?w=400',
             'status'         => 'active',
         ]);
 
         Campaign::create([
-            'title'          => 'Renovasi Perpustakaan SDN 3 Malang',
-            'description'    => 'Wujudkan perpustakaan yang nyaman dengan koleksi buku yang lengkap untuk mendukung semangat belajar siswa.',
-            'target_amount'  => 30000000,
-            'current_amount' => 12000000,
-            'image_url'      => 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
-            'status'         => 'active',
-        ]);
-
-        Campaign::create([
-            'title'          => 'Perlengkapan Lab Komputer SMPN 5 Batu',
-            'description'    => 'Pengadaan 20 unit komputer baru untuk mendukung kegiatan belajar teknologi informasi siswa.',
-            'target_amount'  => 80000000,
+            'title'          => 'Dana Darurat Kesehatan Siswa',
+            'description'    => 'Penyediaan dana kesehatan darurat untuk siswa yang membutuhkan.',
+            'target_amount'  => 20000000,
             'current_amount' => 5000000,
-            'image_url'      => 'https://images.unsplash.com/photo-1546410531-bb4caa6b424d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
+            'image_url'      => 'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?w=400',
             'status'         => 'active',
         ]);
 
-        Campaign::create([
-            'title'          => 'Program Makan Siang Bergizi SMA Kepanjen',
-            'description'    => 'Pastikan setiap siswa mendapatkan asupan gizi yang cukup untuk semangat belajar setiap hari.',
-            'target_amount'  => 15000000,
-            'current_amount' => 11200000,
-            'image_url'      => 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&w=400',
-            'status'         => 'active',
-        ]);
-
-        $this->command->info('');
-        $this->command->info('✅ Data EDUFIN berhasil di-seed!');
-        $this->command->info('──────────────────────────────────────────');
-        $this->command->info('🏫 Admin Sekolah : admin@edufin.sch.id   | admin123');
-        $this->command->info('👨 Orang Tua 1   : hendra@gmail.com      | password123');
-        $this->command->info('👩 Orang Tua 2   : dewi@gmail.com        | password123');
-        $this->command->info('👨 Orang Tua 3   : slamet@gmail.com      | password123');
-        $this->command->info('💝 Donatur 1     : rina@gmail.com        | password123');
-        $this->command->info('💝 Donatur 2     : dermawan@gmail.com    | password123');
-        $this->command->info('──────────────────────────────────────────');
-        $this->command->info('🎓 NISN: 0012345678 | 0087654321 | 0099887766 | 0011223344');
-        $this->command->info('📅 Tagihan: 6 bulan terakhir (5 Lunas, bulan ini Tertunggak)');
-        $this->command->info('');
+        $this->command->info('✅ Database Edufin SMA 3 Kota Malang berhasil di-seed!');
     }
 }

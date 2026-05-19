@@ -10,12 +10,16 @@ class Student extends Model
     use HasFactory;
 
     protected $fillable = [
-        'parent_id', 'name', 'nisn', 'school_name', 'class_name', 'address'
+        'user_id', 'parent_name', 'name', 'nisn', 'school_name', 'class_name', 'address', 'registration_data'
     ];
 
-    public function parent()
+    protected $casts = [
+        'registration_data' => 'array',
+    ];
+
+    public function user()
     {
-        return $this->belongsTo(User::class, 'parent_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 
     public function bills()

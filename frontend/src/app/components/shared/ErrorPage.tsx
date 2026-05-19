@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useRouteError, isRouteErrorResponse } from "react-router";
-import { Home, ArrowLeft, RefreshCw, WifiOff, ShieldOff, ServerCrash, SearchX } from "lucide-react";
+import { Home, ArrowLeft, RefreshCw, WifiOff, ShieldOff, ServerCrash, SearchX, GraduationCap } from "lucide-react";
 
 // ─── Error Config Map ─────────────────────────────────────────────────────────
 interface ErrorConfig {
@@ -249,10 +249,10 @@ export function ErrorPage({ forceStatus }: { forceStatus?: number }) {
         {/* ── Footer ─────────────────────────────────────────── */}
         <div className="mt-10 flex items-center gap-2">
           <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center"
-            style={{ background: "#EEF4FF", fontSize: "0.85rem" }}
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-[#1677FF]"
+            style={{ background: "#EEF4FF" }}
           >
-            🎓
+            <GraduationCap size={16} />
           </div>
           <span style={{ fontSize: "0.72rem", color: "#BFBFBF", fontWeight: 600, letterSpacing: "0.5px" }}>
             EDUFIN · Platform Keuangan Sekolah

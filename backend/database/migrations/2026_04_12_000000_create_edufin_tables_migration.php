@@ -17,7 +17,8 @@ return new class extends Migration
         // 2. Tabel Students (Siswa)
         Schema::create('students', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('parent_id')->nullable()->constrained('users')->onDelete('cascade');
+            $table->foreignId('user_id')->nullable()->constrained('users')->onDelete('cascade'); // Siswa login dengan ini
+            $table->string('parent_name')->nullable();
             $table->string('name');
             $table->string('nisn')->unique();
             $table->string('school_name');

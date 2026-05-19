@@ -1,7 +1,7 @@
 import { createRoot } from "react-dom/client";
 import { Provider } from "react-redux";
 import { GoogleOAuthProvider } from "@react-oauth/google";
-import { GOOGLE_CLIENT_ID } from "./config/api";
+import { GOOGLE_CLIENT_ID } from "./app/config/api";
 import App from "./app/App.tsx";
 import { store } from "./app/store";
 import "./styles/index.css";

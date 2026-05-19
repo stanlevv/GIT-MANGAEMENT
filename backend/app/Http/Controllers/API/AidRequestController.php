@@ -2,10 +2,11 @@
 
 namespace App\Http\Controllers\API;
 
+use App\Actions\AidRequest\ApproveAidRequestAction;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\AidRequest\StoreAidRequestRequest;
+use App\Http\Resources\AidRequestResource;
 use App\Models\AidRequest;
-use App\Models\Campaign;
-use App\Models\Bill;
 use Illuminate\Http\Request;
 
 class AidRequestController extends Controller
@@ -16,20 +17,30 @@ class AidRequestController extends Controller
     public function index()
     {
         $aidRequests = AidRequest::with(['user', 'student', 'fundPool.campaign'])->latest()->get();
-        return response()->json(['aid_requests' => $aidRequests]);
+
+        return AidRequestResource::collection($aidRequests)
+            ->additional(['success' => true]);
+    }
+
+    /**
+     * Dapatkan pengajuan bantuan milik user saat ini.
+     */
+    public function myRequests(Request $request)
+    {
+        $aidRequests = AidRequest::with(['student'])
+            ->where('user_id', $request->user()->id)
+            ->latest()
+            ->get();
+
+        return AidRequestResource::collection($aidRequests)
+            ->additional(['success' => true]);
     }
 
     /**
      * Ajukan permohonan bantuan dana.
      */
-    public function store(Request $request)
+    public function store(StoreAidRequestRequest $request)
     {
-        $request->validate([
-            'student_id' => 'required|exists:students,id',
-            'bill_ids'   => 'required|array',
-            'reason'     => 'required|string',
-        ]);
-
         $aidRequest = AidRequest::create([
             'user_id'    => $request->user()->id,
             'student_id' => $request->student_id,
@@ -38,50 +49,26 @@ class AidRequestController extends Controller
             'status'     => 'pending',
         ]);
 
-        return response()->json(['success' => true, 'aid_request' => $aidRequest], 201);
+        return (new AidRequestResource($aidRequest))
+            ->additional(['success' => true])
+            ->response()
+            ->setStatusCode(201);
     }
 
     /**
-     * Setujui pengajuan (Admin).
-     * Saat disetujui, admin harus memilih Fund Pool mana yang akan digunakan.
+     * Setujui pengajuan — delegated to Action.
      */
-    public function approve(Request $request, AidRequest $aidRequest)
+    public function approve(Request $request, AidRequest $aidRequest, ApproveAidRequestAction $action)
     {
-        $request->validate([
-            'fund_pool_id' => 'required|exists:fund_pools,id',
-        ]);
+        $request->validate(['fund_pool_id' => 'required|exists:fund_pools,id']);
 
-        $fundPool = \App\Models\FundPool::findOrFail($request->fund_pool_id);
+        $updated = $action->execute($aidRequest, $request->fund_pool_id);
 
-        // Hitung total tagihan (kolom yang benar adalah total_amount)
-        $bills = Bill::whereIn('id', $aidRequest->bill_ids)->get();
-        $totalAmount = $bills->sum('total_amount');
-
-        // Cek saldo
-        if ($fundPool->balance < $totalAmount) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Saldo fund pool tidak mencukupi untuk menutupi tagihan ini.'
-            ], 400);
-        }
-
-        // Potong saldo
-        $fundPool->decrement('balance', $totalAmount);
-
-        // Set status tagihan menjadi Lunas (dibayarkan oleh Fund Pool)
-        Bill::whereIn('id', $aidRequest->bill_ids)->update(['status' => 'Lunas']);
-
-        // Update status pengajuan
-        $aidRequest->update([
-            'status' => 'approved',
-            'fund_pool_id' => $fundPool->id
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Pengajuan bantuan disetujui dan dana telah dipotong dari Fund Pool.',
-            'aid_request' => $aidRequest
-        ]);
+        return (new AidRequestResource($updated))
+            ->additional([
+                'success' => true,
+                'message' => 'Pengajuan bantuan disetujui dan dana telah dipotong dari Fund Pool.',
+            ]);
     }
 
     /**
@@ -90,6 +77,7 @@ class AidRequestController extends Controller
     public function reject(Request $request, AidRequest $aidRequest)
     {
         $aidRequest->update(['status' => 'rejected']);
+
         return response()->json(['success' => true, 'message' => 'Pengajuan ditolak.']);
     }
 }
